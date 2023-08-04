@@ -1,7 +1,6 @@
 #if defined(GPIO_PIN_PWM_OUTPUTS)
 
 #include "devServoOutput.h"
-// #include "DShotRMT.h"
 #include "CRSF.h"
 #include "config.h"
 #include "helpers.h"
@@ -9,10 +8,8 @@
 
 static uint8_t SERVO_PINS[PWM_MAX_CHANNELS];
 static ServoMgr *servoMgr;
-// static DShotRMT *dshot_01;
-// DShotRMT dshot_01(3, RMT_CHANNEL_0);
-// DShotRMT dshot_01(uint8_t ch, uint8_t RMT_CHANNEL_0);
-DShotRMT dshot_01(GPIO_NUM_3, RMT_CHANNEL_0);
+
+DShotRMT dshot_01(GPIO_NUM_3, RMT_CHANNEL_0); //Pin output is hardcoded because I can't get DShotRMT to work otherwise without initializing it here.
 
 
 // true when the RX has a new channels packet
@@ -44,7 +41,7 @@ uint16_t servoOutputModeToUs(eServoOutputMode mode)
     case som10KHzDuty:
         return (1000000U / 10000U);
 	case somDShot:
-        return (1000000U / 1000U); // Run DShot at 1kHz?
+        return (1000000U / 1000U); // Run DShot at 1kHz? Seems to work fine.
     default:
         return 0;
     }
@@ -158,9 +155,8 @@ static void initialize()
         }
 		else if (mode == somDShot)
 		{
+				// I assume DShot output pins should be configured here
 				// DShotRMT dshot_01(GPIO_NUM_14, RMT_CHANNEL_0);
-				// dshot_01(pin, RMT_CHANNEL_0);
-				// dshot_01(ch, 0);
 		}
         SERVO_PINS[ch] = pin;
     }
@@ -178,7 +174,7 @@ static int start()
         servoMgr->setRefreshInterval(ch, servoOutputModeToUs((eServoOutputMode)chConfig->val.mode));
     }
 	
-	dshot_01.begin(DSHOT300);
+	dshot_01.begin(DSHOT300); // Need to set protocol for all DShot outputs.
 	
     return DURATION_NEVER;
 }
