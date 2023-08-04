@@ -181,7 +181,7 @@ rmt_item32_t* DShotRMT::encode_dshot_to_rmt(uint16_t parsed_packet) {
 	// ...end marker added to each frame
 	dshot_tx_rmt_item[DSHOT_PAUSE_BIT].duration1 = (DSHOT_PAUSE / 2);
   // dshot_tx_rmt_item[DSHOT_PAUSE_BIT].duration1 = 0;
-  Serial.println(dshot_tx_rmt_item[15].duration1);
+  // Serial.println(dshot_tx_rmt_item[15].duration1);
   // dshot_tx_rmt_item[15].duration1 = 1815;
   // 180 = 34.75us pause
   // 100 = 26.75us pause
