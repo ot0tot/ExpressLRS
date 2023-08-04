@@ -1,7 +1,7 @@
 #if defined(GPIO_PIN_PWM_OUTPUTS)
 
 #include "devServoOutput.h"
-#include "DShotRMT.h"
+// #include "DShotRMT.h"
 #include "CRSF.h"
 #include "config.h"
 #include "helpers.h"
@@ -9,6 +9,8 @@
 
 static uint8_t SERVO_PINS[PWM_MAX_CHANNELS];
 static ServoMgr *servoMgr;
+static DShotRMT *DShotRMT;
+
 // true when the RX has a new channels packet
 static bool newChannelsAvailable;
 // Absolute max failsafe time if no update is received, regardless of LQ
@@ -49,7 +51,7 @@ static void servoWrite(uint8_t ch, uint16_t us)
     const rx_config_pwm_t *chConfig = config.GetPwmChannel(ch);
 	if ((eServoOutputMode)chConfig->val.mode == somDShot)
     {
-        dshot_01.send_dshot_value((((us - 1000) * 2) + 47)); // Convert PWM signal in us to DShot value
+        DShotRMT->dshot_01.send_dshot_value((((us - 1000) * 2) + 47)); // Convert PWM signal in us to DShot value
     }
 	else
 	{
@@ -134,6 +136,8 @@ static void initialize()
         return;
     }
 
+	DShotRMT->dshot_01.begin(DSHOT300);
+
     for (int ch = 0; ch < GPIO_PIN_PWM_OUTPUTS_COUNT; ++ch)
     {
         uint8_t pin = GPIO_PIN_PWM_OUTPUTS[ch];
@@ -153,7 +157,8 @@ static void initialize()
 		else if (mode == somDShot)
 		{
 				// DShotRMT dshot_01(GPIO_NUM_14, RMT_CHANNEL_0);
-				DShotRMT dshot_01(i, RMT_CHANNEL_0);
+				//DShotRMT dshot_01(ch, RMT_CHANNEL_0);
+				DShotRMT->dshot_01(ch, RMT_CHANNEL_0);
 		}
         SERVO_PINS[ch] = pin;
     }
@@ -170,8 +175,6 @@ static int start()
         const rx_config_pwm_t *chConfig = config.GetPwmChannel(ch);
         servoMgr->setRefreshInterval(ch, servoOutputModeToUs((eServoOutputMode)chConfig->val.mode));
     }
-	
-	dshot_01.begin(DSHOT300);
 	
     return DURATION_NEVER;
 }
