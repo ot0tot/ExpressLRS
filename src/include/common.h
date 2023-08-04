@@ -177,6 +177,7 @@ enum eServoOutputMode : uint8_t
     somOnOff,   // Digital 0/1 mode
     somSerial,  // Serial TX or RX depending on pin
     somPwm,     // True PWM mode (NOT SUPPORTED)
+	somDShot,   // DShot300
 };
 
 enum eSerialProtocol : uint8_t

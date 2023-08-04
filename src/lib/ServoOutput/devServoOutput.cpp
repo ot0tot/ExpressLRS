@@ -1,6 +1,7 @@
 #if defined(GPIO_PIN_PWM_OUTPUTS)
 
 #include "devServoOutput.h"
+#include "DShotRMT.h"
 #include "CRSF.h"
 #include "config.h"
 #include "helpers.h"
@@ -36,6 +37,8 @@ uint16_t servoOutputModeToUs(eServoOutputMode mode)
         return (1000000U / 400U);
     case som10KHzDuty:
         return (1000000U / 10000U);
+	case somDShot:
+        return (1000000U / 1000U); // Run DShot at 1kHz?
     default:
         return 0;
     }
@@ -44,21 +47,28 @@ uint16_t servoOutputModeToUs(eServoOutputMode mode)
 static void servoWrite(uint8_t ch, uint16_t us)
 {
     const rx_config_pwm_t *chConfig = config.GetPwmChannel(ch);
-    if ((eServoOutputMode)chConfig->val.mode == somOnOff)
+	if ((eServoOutputMode)chConfig->val.mode == somDShot)
     {
-        servoMgr->writeDigital(ch, us > 1500U);
+        dshot_01.send_dshot_value((((us - 1000) * 2) + 47)); // Convert PWM signal in us to DShot value
     }
-    else
-    {
-        if ((eServoOutputMode)chConfig->val.mode == som10KHzDuty)
-        {
-            servoMgr->writeDuty(ch, constrain(us, 1000, 2000) - 1000);
-        }
-        else
-        {
-            servoMgr->writeMicroseconds(ch, us / (chConfig->val.narrow + 1));
-        }
-    }
+	else
+	{
+		if ((eServoOutputMode)chConfig->val.mode == somOnOff)
+		{
+			servoMgr->writeDigital(ch, us > 1500U);
+		}
+		else
+		{
+			if ((eServoOutputMode)chConfig->val.mode == som10KHzDuty)
+			{
+				servoMgr->writeDuty(ch, constrain(us, 1000, 2000) - 1000);
+			}
+			else
+			{
+				servoMgr->writeMicroseconds(ch, us / (chConfig->val.narrow + 1));
+			}
+		}
+	}
 }
 
 static void servosFailsafe()
@@ -140,9 +150,14 @@ static void initialize()
         {
             pin = ServoMgr::PIN_DISCONNECTED;
         }
+		else if (mode == somDShot)
+		{
+				// DShotRMT dshot_01(GPIO_NUM_14, RMT_CHANNEL_0);
+				DShotRMT dshot_01(i, RMT_CHANNEL_0);
+		}
         SERVO_PINS[ch] = pin;
     }
-
+	
     // Initialize all servos to low ASAP
     servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
     servoMgr->initialize();
@@ -155,7 +170,9 @@ static int start()
         const rx_config_pwm_t *chConfig = config.GetPwmChannel(ch);
         servoMgr->setRefreshInterval(ch, servoOutputModeToUs((eServoOutputMode)chConfig->val.mode));
     }
-
+	
+	dshot_01.begin(DSHOT300);
+	
     return DURATION_NEVER;
 }
 
