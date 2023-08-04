@@ -9,8 +9,11 @@
 
 static uint8_t SERVO_PINS[PWM_MAX_CHANNELS];
 static ServoMgr *servoMgr;
-// static DShotRMT *dshotRMT;
-DShotRMT dshot_01(3, RMT_CHANNEL_0);
+// static DShotRMT *dshot_01;
+// DShotRMT dshot_01(3, RMT_CHANNEL_0);
+// DShotRMT dshot_01(uint8_t ch, uint8_t RMT_CHANNEL_0);
+DShotRMT dshot_01(GPIO_NUM_3, RMT_CHANNEL_0);
+
 
 // true when the RX has a new channels packet
 static bool newChannelsAvailable;
@@ -156,7 +159,7 @@ static void initialize()
 		else if (mode == somDShot)
 		{
 				// DShotRMT dshot_01(GPIO_NUM_14, RMT_CHANNEL_0);
-				//DShotRMT dshot_01(ch, RMT_CHANNEL_0);
+				// dshot_01(pin, RMT_CHANNEL_0);
 				// dshot_01(ch, 0);
 		}
         SERVO_PINS[ch] = pin;
