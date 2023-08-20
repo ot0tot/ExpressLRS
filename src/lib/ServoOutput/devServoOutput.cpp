@@ -7,6 +7,10 @@
 #include "rxtx_intf.h"
 #include "logging.h"
 
+#if defined(USE_GYRO)
+#include "devRateController.h"
+#endif	
+
 
 static uint8_t SERVO_PINS[PWM_MAX_CHANNELS];
 static ServoMgr *servoMgr;
@@ -104,6 +108,10 @@ static int servosUpdate(unsigned long now)
             {
                 us = 3000U - us;
             }
+#if defined(USE_GYRO)
+		us = rateController(ch, us);
+#endif			
+			
             servoWrite(ch, us);
         } /* for each servo */
     }     /* if newChannelsAvailable */
