@@ -3089,7 +3089,7 @@ bool MPU6050::writeMemoryBlock(const uint8_t *data, uint16_t dataSize, uint8_t b
 
         // verify data if needed
         if (verify && verifyBuffer) {
-        	printf("VERIFY\n");
+        	// printf("VERIFY\n");
             setMemoryBank(bank);
             setMemoryStartAddress(address);
             I2Cdev::readBytes(devAddr, MPU6050_RA_MEM_R_W, chunkSize, verifyBuffer);

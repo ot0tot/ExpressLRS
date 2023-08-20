@@ -33,6 +33,7 @@
 #include "devSerialUpdate.h"
 #include "devBaro.h"
 #include "devMSPVTX.h"
+#include "devRateController.h"
 
 #if defined(PLATFORM_ESP8266)
 #include <FS.h>
@@ -77,6 +78,9 @@ device_affinity_t ui_devices[] = {
 #endif
 #ifdef HAS_SERVO_OUTPUT
   {&ServoOut_device, 1},
+#endif
+#ifdef USE_GYRO
+  {&Gyro_device, 1},
 #endif
 #ifdef HAS_BARO
   {&Baro_device, 0}, // must come after AnalogVbat_device to slow updates

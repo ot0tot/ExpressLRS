@@ -7,9 +7,6 @@
 #include "rxtx_intf.h"
 #include "logging.h"
 
-#if defined(USE_GYRO)
-#include "devRateController.h"
-#endif
 
 static uint8_t SERVO_PINS[PWM_MAX_CHANNELS];
 static ServoMgr *servoMgr;
@@ -100,11 +97,6 @@ static int servosUpdate(unsigned long now)
 			
 			uint16_t us = CRSF_to_US(crsfVal);
 			
-#if defined(USE_GYRO)
-			// If using rate controller, add correction before writing output
-			read_mpu();
-			
-#endif
 
             // Flip the output around the mid value if inverted
             // (1500 - usOutput) + 1500
@@ -158,11 +150,6 @@ static void initialize()
     // Initialize all servos to low ASAP
     servoMgr = new ServoMgr(SERVO_PINS, GPIO_PIN_PWM_OUTPUTS_COUNT, 20000U);
     servoMgr->initialize();
-#if defined(USE_GYRO)
-// DBGLN("Made it here");
-	initI2C();
-	// initialize_mpu();
-#endif
 }
 
 static int start()
@@ -172,12 +159,6 @@ static int start()
         const rx_config_pwm_t *chConfig = config.GetPwmChannel(ch);
         servoMgr->setRefreshInterval(ch, servoOutputModeToUs((eServoOutputMode)chConfig->val.mode));
     }
-
-    #if defined(USE_GYRO)
-// DBGLN("Made it here");
-	// initI2C();
-	initialize_mpu();
-#endif
 
     return DURATION_NEVER;
 }
