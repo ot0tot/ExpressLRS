@@ -2,9 +2,14 @@
 #include "devRateController.h"
 #include "logging.h"
 
+#include <driver/i2c.h>
+#include <esp_log.h>
+#include <esp_err.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include "I2Cdev.h"
-#include "MPU6050.h"
-#include "MPU6050_6Axis_MotionApps20.h"
+// #include "MPU6050.h"
+#include "MPU6050_6Axis_MotionApps612.h"
 
 #include "telemetry.h"
 extern Telemetry telemetry;
@@ -40,6 +45,54 @@ int cal_gyro = 1;  //set to zero to use gyro calibration offsets below.
 
 MPU6050 mpu = MPU6050();
 
+static void initI2C() {
+	DBGLN("initI2C");
+	// i2c_config_t conf;
+	// conf.mode = I2C_MODE_MASTER;
+	// conf.sda_io_num = (gpio_num_t)PIN_SDA;
+	// DBGLN("PIN_SDA: %d", PIN_SDA);
+	// conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+	// conf.scl_io_num = (gpio_num_t)PIN_CLK;
+	// DBGLN("PIN_CLK: %d", PIN_CLK);
+	// conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+	// conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+	// conf.master.clk_speed = 400000;
+	// conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
+	// conf.clk_flags = 0;
+	// DBGLN("Starting delay");
+	// vTaskDelay(500);
+	// DBGLN("Delay ended");
+	// DBGLN("I2C_NUM_0: %d", I2C_NUM_0);
+	// DBGLN("conf.master.clk_speed: %d", conf.master.clk_speed);
+	// ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
+	// ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
+	// vTaskDelete(NULL);
+	// DBGLN("vTaskDeleted");
+	Wire.begin(PIN_SDA, PIN_CLK, 400000);
+	// Wire.setClock(I2C_MASTER_FREQ_HZ);
+	DBGLN("I2C initialized");
+}
+
+
+// static void initialize_mpu(void*){
+static void initialize_mpu(){
+	// MPU6050 mpu = MPU6050();
+	DBGLN("Initialize_mpu");
+	vTaskDelay(500);
+	mpu.initialize();
+	vTaskDelay(500);
+	DBGLN("Initialize DMP");
+	mpu.dmpInitialize();
+	DBGLN("Initialized_mpu");
+	
+    mpu.CalibrateAccel(6);
+    mpu.CalibrateGyro(6);
+	DBGLN("mpu calibrated");
+
+	mpu.setDMPEnabled(true);
+	DBGLN("DMP enabled");
+}
+
 static int16_t decidegrees2Radians10000(int16_t angle_decidegree)
 {
 	while (angle_decidegree > 1800) {
@@ -52,9 +105,9 @@ static int16_t decidegrees2Radians10000(int16_t angle_decidegree)
 }
 
 // PID controller values
-const float kP_ail = 0.1;  // Proportional gain
-const float kI_ail = 0.01; // Integral gain
-const float kD_ail = 0.01; // Derivative gain
+const float kP_ail = 10.1;  // Proportional gain
+const float kI_ail = 0.1; // Integral gain
+const float kD_ail = 0.1; // Derivative gain
 const float maxRate_ail = 180.0; // Max roll rate in deg/s
 
 float errorSum_ail = 0.0;
@@ -78,7 +131,7 @@ uint16_t rateController(uint8_t ch, uint16_t us)
 	mpuIntStatus = mpu.getIntStatus();
 	fifoCount = mpu.getFIFOCount();
 	if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
-	        // DBGLN("Resetting FIFO");
+	        DBGLN("Resetting FIFO");
 	        mpu.resetFIFO();
 	} else if (mpuIntStatus & 0x02) {
 	        // wait for correct available data length
@@ -89,14 +142,14 @@ uint16_t rateController(uint8_t ch, uint16_t us)
 	 		mpu.dmpGetQuaternion(&q, fifoBuffer);
 			mpu.dmpGetGravity(&gravity, &q);
 			mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-/*			DBGLN("YAW: %f, ", ypr[0] * 180/M_PI);
-			DBGLN("PITCH: %f, ", ypr[1] * 180/M_PI);
-			DBGLN("ROLL: %f", ypr[2] * 180/M_PI);
-			DBGLN("Quaternions");
-			DBGLN("w: %f ", q.w);
-			DBGLN("x: %f ", q.x);
-			DBGLN("y: %f ", q.y);
-			DBGLN("z: %f ", q.z); */
+			// DBGLN("YAW: %f, ", ypr[0] * 180/M_PI);
+			// DBGLN("PITCH: %f, ", ypr[1] * 180/M_PI);
+			// DBGLN("ROLL: %f", ypr[2] * 180/M_PI);
+			// DBGLN("Quaternions");
+			// DBGLN("w: %f ", q.w);
+			// DBGLN("x: %f ", q.x);
+			// DBGLN("y: %f ", q.y);
+			// DBGLN("z: %f ", q.z); 
 			// DBGLN("Gyro x: %f", gyro.x * gscale);
 			// DBGLN("Gyro y: %f", gyro.y * gscale);
 			// DBGLN("Gyro z: %f", gyro.z * gscale);
@@ -123,29 +176,43 @@ uint16_t rateController(uint8_t ch, uint16_t us)
 
 
 	if (ch == 0){ // Aileron channel
-		DBGLN("ch0 %d, %d", ch, us);
+		DBGLN("");
+		DBGLN("ch %d, %d", ch, us);
 		DBGLN("Desired rate: %f", ((us - 1500) * (maxRate_ail / 500)));
 		DBGLN("Actual rate: %f", gyro.x * gscale);
 		float error = ((us - 1500) * (maxRate_ail / 500)) - (gyro.x * gscale);
+		// if (error < 3) {return us;}
 		DBGLN("Error: %f", error);
-		if (error > error_ail_max) { error = error_ail_max; }
+		if (error > error_ail_max) { error = error_ail_max; } // Cap at +/-100
 		if (error < -error_ail_max) { error = -error_ail_max; }
-
+		DBGLN("Error after cap: %f", error);
+		
 		errorSum_ail += error;
-		if (errorSum_ail > errorSum_ail_max) { errorSum_ail = errorSum_ail_max; }
+		if (errorSum_ail > errorSum_ail_max) { errorSum_ail = errorSum_ail_max; } // Cap at +/-10
 		if (errorSum_ail < -errorSum_ail_max) { errorSum_ail = -errorSum_ail_max; }
 		
 		float errorDiff = error - prevError_ail;
+		if (errorDiff > 100) { errorDiff = 100; }
     	prevError_ail = error;
+		DBGLN("error: %f, errorSum: %f, errorDiff: %f",error, errorSum_ail, errorDiff);
 		float output = kP_ail * error + kI_ail * errorSum_ail + kD_ail * errorDiff;
-		DBGLN("Output: %f", output);
-		us += (uint16_t)output * (500 / maxRate_ail);
-		// Constrain the control signal within the range 1000 to 2000
-		if (us < 1000) {
-			us = 1000;
-		} else if (us > 2000) {
-			us = 2000;
+		if((output < 1) && (output > -1)) { 
+		prevError_ail = 0;
+		errorSum_ail = 0;
+		return us; 
 		}
+		DBGLN("Output: %f", output);
+		DBGLN("us before output: %d",us);
+		if (us + output * (500 / maxRate_ail) < 989){us=989;}
+		else if(us + output * (500 / maxRate_ail) > 2012){us=2012;}
+		else{us += output * (500 / maxRate_ail);}
+		DBGLN("us after output: %d",us);
+		// Constrain the control signal within the range 1000 to 2000
+/* 		if (us < 989) {
+			us = 989;
+		} else if (us > 2012) {
+			us = 2012;
+		} */
 		
 		DBGLN("us %d", us);
 	}
@@ -167,52 +234,17 @@ uint16_t rateController(uint8_t ch, uint16_t us)
 		// DBGLN("Output: %f", output);
 		us += (uint16_t)output * (500 / maxRate_ele);
 		// Constrain the control signal within the range 1000 to 2000
-		if (us < 1000) {
-			us = 1000;
-		} else if (us > 2000) {
-			us = 2000;
+		if (us < 989) {
+			us = 989;
+		} else if (us > 2012) {
+			us = 2012;
 		}
 	}
 	
 	return us;
+// } //MPU loop
 }
 
-
-static void initI2C() {
-	DBGLN("initI2C");
-	i2c_config_t conf;
-	conf.mode = I2C_MODE_MASTER;
-	conf.sda_io_num = (gpio_num_t)PIN_SDA;
-	DBGLN("PIN_SDA: %d", PIN_SDA);
-	conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-	conf.scl_io_num = (gpio_num_t)PIN_CLK;
-	DBGLN("PIN_CLK: %d", PIN_CLK);
-	// conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-	conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-	// conf.master.clk_speed = 400000;
-	conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
-	conf.clk_flags = 0;
-	// DBGLN("I2C_NUM_0: %d", I2C_NUM_0);
-	// DBGLN("conf.master.clk_speed: %d", conf.master.clk_speed);
-	ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &conf));
-	ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
-	// vTaskDelete(NULL);
-}
-
-
-// static void initialize_mpu(void*){
-static void initialize_mpu(){
-	// MPU6050 mpu = MPU6050();
-	DBGLN("Initialize_mpu");
-	mpu.initialize();
-	mpu.dmpInitialize();
-
-	
-    mpu.CalibrateAccel(6);
-    mpu.CalibrateGyro(6);
-
-	mpu.setDMPEnabled(true);
-}
 
 // static void read_mpu(void*){
 static void read_mpu(){	

@@ -12,6 +12,9 @@
 #endif	
 
 
+
+
+
 static uint8_t SERVO_PINS[PWM_MAX_CHANNELS];
 static ServoMgr *servoMgr;
 // true when the RX has a new channels packet
@@ -109,7 +112,9 @@ static int servosUpdate(unsigned long now)
                 us = 3000U - us;
             }
 #if defined(USE_GYRO)
+	// if(IsArmed()){
 		us = rateController(ch, us);
+	// }
 #endif			
 			
             servoWrite(ch, us);
