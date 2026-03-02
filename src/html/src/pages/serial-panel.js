@@ -116,7 +116,7 @@ class SerialPanel extends LitElement {
         }
         // If any of the PWM pins are defined to support serial (but it's not selected) then disabled serial
         for(const pwm of elrsState.config.pwm) {
-            if (pwm.features & 3 !== 0)
+            if ((pwm.features & 3) !== 0)
                 return false
         }
         // No PWM pins are defined as serial so use what the hardware dictates
