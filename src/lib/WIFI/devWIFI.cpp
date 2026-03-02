@@ -390,11 +390,11 @@ static void GetConfiguration(AsyncWebServerRequest *request)
       channel["pin"] = GPIO_PIN_PWM_OUTPUTS[ch];
       uint8_t features = 0;
       auto pin = GPIO_PIN_PWM_OUTPUTS[ch];
-      if (pin == U0TXD_GPIO_NUM && GPIO_PIN_RCSIGNAL_TX != UNDEF_PIN) features |= 1;  // SerialTX supported
-      if (pin == U0RXD_GPIO_NUM && GPIO_PIN_RCSIGNAL_RX != UNDEF_PIN) features |= 2;  // SerialRX supported
+      if (pin == U0TXD_GPIO_NUM) features |= 1;  // SerialTX supported
+      if (pin == U0RXD_GPIO_NUM) features |= 2;  // SerialRX supported
       if (pin == GPIO_PIN_SCL) features |= 4;  // I2C SCL supported (only on this pin)
       if (pin == GPIO_PIN_SDA) features |= 8;  // I2C SDA supported (only on this pin)
-      if ((GPIO_PIN_SCL == UNDEF_PIN || GPIO_PIN_SDA == UNDEF_PIN) && !(features & 1) && !(features & 2)) features |= 12; // Both I2C SCL/SDA supported (on any pin, if not Serial)
+      if ((GPIO_PIN_SCL == UNDEF_PIN || GPIO_PIN_SDA == UNDEF_PIN) && !(features & 1) && !(features & 2)) features |= 12; // Both I2C SCL/SDA supported (on any pin if not Serial)
       #if defined(PLATFORM_ESP32)
       if (pin != 0) features |= 16; // DShot supported on all pins but GPIO0
       if (pin == GPIO_PIN_SERIAL1_RX) features |= 32;  // SERIAL1 RX supported (only on this pin)
