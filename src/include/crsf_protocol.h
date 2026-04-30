@@ -45,6 +45,10 @@
 #define CRSF_TELEMETRY_CRC_LENGTH 1
 #define CRSF_TELEMETRY_TOTAL_SIZE(x) (x + CRSF_FRAME_LENGTH_EXT_TYPE_CRC)
 
+#define CRSF_GPS_TIME_SEC_OFFSET    9
+#define CRSF_GPS_TIME_MILLIS_OFFSET 10
+#define CRSF_GPS_TIME_CRC_OFFSET    12
+
 //////////////////////////////////////////////////////////////
 
 #define CRSF_MSP_REQ_PAYLOAD_SIZE 8
@@ -455,6 +459,33 @@ static inline uint8_t ICACHE_RAM_ATTR CRSF_to_SWITCH3b(uint16_t ch)
         || ch > (CRSF_CHANNEL_VALUE_MID+CHANNEL_BIN_SIZE/4))
         return CRSF_to_N(ch, CHANNEL_BIN_COUNT);
     return 7;
+}
+
+// Offsets within the GPS Time frame payload to account for scheduler delay in GPS Time transmission (relative to start of CRSF frame)
+static inline void crsfGpsTimeAdvanceMs(uint8_t *frame, uint16_t ms)
+{
+    uint16_t millis = (frame[CRSF_GPS_TIME_MILLIS_OFFSET] << 8) | frame[CRSF_GPS_TIME_MILLIS_OFFSET + 1];
+    millis += ms;
+
+    if (millis >= 1000)
+    {
+        millis -= 1000;
+        uint8_t sec = frame[CRSF_GPS_TIME_SEC_OFFSET] + 1;
+        if (sec >= 60)
+        {
+            sec = 0;
+            uint8_t min = frame[CRSF_GPS_TIME_SEC_OFFSET - 1] + 1;
+            // min rollover into hour is astronomically unlikely given the small elapsed window,
+            // but trivial to add if desired
+            frame[CRSF_GPS_TIME_SEC_OFFSET - 1] = (min < 60) ? min : 0;
+        }
+        frame[CRSF_GPS_TIME_SEC_OFFSET] = sec;
+    }
+
+    frame[CRSF_GPS_TIME_MILLIS_OFFSET]     = millis >> 8;
+    frame[CRSF_GPS_TIME_MILLIS_OFFSET + 1] = millis & 0xFF;
+    frame[CRSF_GPS_TIME_CRC_OFFSET] = crsf_crc.calc(&frame[CRSF_TELEMETRY_TYPE_INDEX],
+                                                      frame[CRSF_TELEMETRY_LENGTH_INDEX] - 1);
 }
 
 // 3b switches use 0-5 to represent 6 positions switches and "7" to represent middle

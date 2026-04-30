@@ -2117,7 +2117,7 @@ void loop()
     {
 		if (nextPlayloadSize > 0 && DataDlBuffer[CRSF_TELEMETRY_TYPE_INDEX] == CRSF_FRAMETYPE_GPS_TIME) 
 		{
-            advanceGpsTimeFrame(DataDlBuffer, millis() - gpsTimeFrameQueuedAt);
+            crsfGpsTimeAdvanceMs(DataDlBuffer, (uint16_t)(millis() - gpsTimeFrameQueuedAt));
         }
         DataDlSender.SetDataToTransmit(DataDlBuffer, nextPlayloadSize);
     }
