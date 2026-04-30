@@ -2115,6 +2115,10 @@ void loop()
     uint8_t nextPlayloadSize = 0;
     if (!DataDlSender.IsActive() && otaConnector.GetNextPayload(&nextPlayloadSize, DataDlBuffer))
     {
+		if (nextPlayloadSize > 0 && DataDlBuffer[CRSF_TELEMETRY_TYPE_INDEX] == CRSF_FRAMETYPE_GPS_TIME) 
+		{
+            advanceGpsTimeFrame(DataDlBuffer, millis() - gpsTimeFrameQueuedAt);
+        }
         DataDlSender.SetDataToTransmit(DataDlBuffer, nextPlayloadSize);
     }
 
